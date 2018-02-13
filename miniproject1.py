@@ -144,15 +144,22 @@ def main():
     test_filename = "test_data.txt"
 
     # Read, parse, and store the training data
-    training_word_list, X, Y = assemble_training_dataset(input_directory + "\\" + training_filename)
+    training_word_list, training_data, training_values = assemble_training_dataset(input_directory + "\\" + training_filename)
 
     # Read, parse, and store the test data
     test_word_list, test_data = assemble_test_dataset(input_directory + "\\" + test_filename)
 
+    # Combine the data into a single array
+    all_data = np.vstack((training_data, test_data))
+    
     # Apply the TF-IDF transformation to the data
     transformer = TfidfTransformer()
-    X = transformer.fit_transform(X)
-    test_data = transformer.fit_transform(test_data)
+    transformed_data = transformer.fit_transform(all_data) 
+    
+    # Split the data back into training and test sets
+    split_data = np.array_split(transformed_data.toarray(), [len(training_data)])
+    X_train = split_data[0]
+    X_test = split_data[1]
 
     ###########################################################################
     #                                                                         #
@@ -178,7 +185,7 @@ def main():
         model = LogisticRegression(C=reg_value)
 
         # Obtain the average cross-validation score
-        cv_score = np.mean(cross_val_score(model, X, Y, cv=num_folds, n_jobs=1))
+        cv_score = np.mean(cross_val_score(model, X_train, training_values, cv=num_folds, n_jobs=1))
 
         # Print the results to standard output
         print("[C = " + str(reg_value) + "]")
@@ -226,10 +233,10 @@ def main():
     model = LogisticRegression(C=1.8)
 
     # Train the model
-    model.fit(X, Y)
+    model.fit(X_train, training_values)
     
     # Generate predictions
-    predictions = model.predict(test_data)
+    predictions = model.predict(X_test)
 
     # Write the predictions to a file
     make_submission_file(output_directory + "\\" + output_filename, predictions)
